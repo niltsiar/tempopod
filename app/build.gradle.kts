@@ -9,7 +9,7 @@ version = "0.0.1"
 kotlin {
     jvm() {
         mainRun {
-            mainClass = "dev.niltsiar.tempopod.TempoPod"
+            mainClass = "dev.niltsiar.tempopod.MainKt"
         }
     }
 
