@@ -23,15 +23,21 @@ fun main(args: Array<String>) {
     val xmlContentResult = fetchFeed(feedUrl)
 
     if (xmlContentResult.isSuccess) {
-        val xmlContent = xmlContentResult.getOrNull()
-        val episodes = parseEpisodes(xmlContent!!)
+        val xmlContent = xmlContentResult.getOrThrow()
+        val episodes = parseEpisodes(xmlContent)
         if (episodes.none()) {
             println("No episodes found in the feed.")
         } else {
-            val selectedEpisodes = episodes.selectEpisodes(selectedTempo)
+            val shortestEpisodeDuration = episodes.minByOrNull { it.duration }?.duration
+            println("Shortest episode duration: $shortestEpisodeDuration seconds")
+            if (shortestEpisodeDuration != null && selectedTempo * 60 < shortestEpisodeDuration) {
+                println("The selected tempo is less than the duration of the shortest episode.")
+            } else {
+                val selectedEpisodes = episodes.selectEpisodes(selectedTempo)
 
-            println("Selected episodes:")
-            selectedEpisodes.forEach { println(it) }
+                println("Selected episodes:")
+                selectedEpisodes.forEach { println(it) }
+            }
         }
     } else {
         val exception = xmlContentResult.exceptionOrNull()
