@@ -5,7 +5,6 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.util.Collections
 import java.util.function.Consumer
 import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.Element
@@ -32,8 +31,8 @@ private fun fetchFeed(feedUrl: String): String {
     return response.body()
 }
 
-private fun parseEpisodes(xmlContent: String): List<Episode?> {
-    val episodes: MutableList<Episode?> = ArrayList()
+private fun parseEpisodes(xmlContent: String): List<Episode> {
+    val episodes: MutableList<Episode> = ArrayList()
     val factory = DocumentBuilderFactory.newInstance()
     val builder = factory.newDocumentBuilder()
     val document = builder.parse(InputSource(StringReader(xmlContent)))
@@ -51,17 +50,21 @@ private fun parseEpisodes(xmlContent: String): List<Episode?> {
     return episodes
 }
 
-private fun selectEpisodes(episodes: List<Episode?>, tempo: Int): List<String> {
-    Collections.shuffle(episodes)
-    val selected: MutableList<String> = ArrayList()
+private fun selectEpisodes(episodes: List<Episode>, tempo: Int): List<String> {
+    val shuffledEpisodes = episodes.shuffled()
     var totalTime = 0
-    for (episode in episodes) {
-        if (totalTime + episode!!.duration <= tempo * 60) {
-            selected.add(episode.title)
-            totalTime += episode.duration
+
+    val selectedEpisodes = shuffledEpisodes.takeWhile { episode ->
+        val newTotalTime = totalTime + episode.duration
+        if (newTotalTime <= tempo * 60) {
+            totalTime = newTotalTime
+            true
+        } else {
+            false
         }
     }
-    return selected
+
+    return selectedEpisodes.map { it.title }
 }
 
-internal class Episode(var title: String, var duration: Int)
+data class Episode(val title: String, val duration: Int)
