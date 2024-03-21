@@ -18,12 +18,19 @@ fun main(args: Array<String>) {
         else -> 30 to "https://raw.githubusercontent.com/webreactiva-devs/reto-tempopod/main/feed/webreactiva.xml"
     }
 
-    val xmlContent = fetchFeed(feedUrl)
-    val episodes = parseEpisodes(xmlContent)
-    val selectedEpisodes = episodes.selectEpisodes(selectedTempo)
+    val xmlContentResult = fetchFeed(feedUrl)
 
-    println("Episodios seleccionados:")
-    selectedEpisodes.forEach { println(it) }
+    if (xmlContentResult.isSuccess) {
+        val xmlContent = xmlContentResult.getOrNull()
+        val episodes = parseEpisodes(xmlContent!!)
+        val selectedEpisodes = episodes.selectEpisodes(selectedTempo)
+
+        println("Selected episodes:")
+        selectedEpisodes.forEach { println(it) }
+    } else {
+        val exception = xmlContentResult.exceptionOrNull()
+        println("Error fetching feed: ${exception?.message}")
+    }
 }
 
 private fun parseEpisodes(xmlContent: String): Sequence<Episode> {
@@ -56,13 +63,18 @@ private fun Sequence<Episode>.selectEpisodes(tempo: Int): Sequence<String> {
     }.map { it.title }
 }
 
-private fun fetchFeed(feedUrl: String): String {
+private fun fetchFeed(feedUrl: String): Result<String> {
     val client = HttpClient.newHttpClient()
     val request = HttpRequest.newBuilder()
         .uri(URI.create(feedUrl))
         .build()
-    val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-    return response.body()
+
+    return try {
+        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        response.body()?.let { Result.success(it) } ?: Result.failure(RuntimeException("Failed to fetch feed"))
+    } catch (e: Exception) {
+        Result.failure(RuntimeException("Failed to fetch feed from URL: $feedUrl", e))
+    }
 }
 
 // Extension function to convert NodeList to Sequence
