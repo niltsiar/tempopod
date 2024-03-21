@@ -12,6 +12,7 @@ import org.w3c.dom.NodeList
 import org.xml.sax.InputSource
 
 //Empty feed: https://raw.githubusercontent.com/webreactiva-devs/reto-tempopod/main/feed/empty.xml
+//No duration feed: https://raw.githubusercontent.com/webreactiva-devs/reto-tempopod/main/feed/episodes-whithout-duration.xml
 
 fun main(args: Array<String>) {
     val (selectedTempo, feedUrl) = when {
@@ -56,11 +57,15 @@ private fun parseEpisodes(xmlContent: String): Sequence<Episode> {
     } else {
         nodeList.asSequence()
             .filterIsInstance<Element>()
-            .map { element ->
+            .mapNotNull { element ->
                 val title = element.getElementsByTagName("title").item(0).textContent
-                val durationStr = element.getElementsByTagName("itunes:duration").item(0).textContent
-                val duration = durationStr.toInt()
-                Episode(title, duration)
+                val durationNodeList = element.getElementsByTagName("itunes:duration")
+                if (durationNodeList.length > 0 && durationNodeList.item(0).textContent.isNotBlank()) {
+                    val duration = durationNodeList.item(0).textContent.toInt()
+                    Episode(title, duration)
+                } else {
+                    null
+                }
             }
     }
 }
