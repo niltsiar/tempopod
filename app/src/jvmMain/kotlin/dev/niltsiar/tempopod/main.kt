@@ -5,7 +5,6 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.util.function.Consumer
 import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -13,26 +12,21 @@ import org.w3c.dom.NodeList
 import org.xml.sax.InputSource
 
 fun main(args: Array<String>) {
-    val selectedTempo = if (args.size > 0) args[0].toInt() else 30
-    val feedUrl = if (args.size > 1) args[1] else "https://raw.githubusercontent.com/webreactiva-devs/reto-tempopod/main/feed/webreactiva.xml"
+    val (selectedTempo, feedUrl) = when {
+        args.size > 1 -> args[0].toInt() to args[1]
+        args.isNotEmpty() -> args[0].toInt() to "https://raw.githubusercontent.com/webreactiva-devs/reto-tempopod/main/feed/webreactiva.xml"
+        else -> 30 to "https://raw.githubusercontent.com/webreactiva-devs/reto-tempopod/main/feed/webreactiva.xml"
+    }
 
     val xmlContent = fetchFeed(feedUrl)
     val episodes = parseEpisodes(xmlContent)
-    val selectedEpisodes = selectEpisodes(episodes, selectedTempo)
+    val selectedEpisodes = episodes.selectEpisodes(selectedTempo)
+
     println("Episodios seleccionados:")
-    selectedEpisodes.forEach(Consumer { x: String? -> println(x) })
+    selectedEpisodes.forEach { println(it) }
 }
 
-private fun fetchFeed(feedUrl: String): String {
-    val client = HttpClient.newHttpClient()
-    val request = HttpRequest.newBuilder()
-        .uri(URI.create(feedUrl))
-        .build()
-    val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-    return response.body()
-}
-
-private fun parseEpisodes(xmlContent: String): List<Episode> {
+private fun parseEpisodes(xmlContent: String): Sequence<Episode> {
     val document = DocumentBuilderFactory.newInstance()
         .newDocumentBuilder()
         .parse(InputSource(StringReader(xmlContent)))
@@ -46,18 +40,12 @@ private fun parseEpisodes(xmlContent: String): List<Episode> {
             val duration = durationStr.toInt()
             Episode(title, duration)
         }
-        .toList() // Convert Sequence back to List
 }
 
-// Extension function to convert NodeList to Sequence
-private fun NodeList.asSequence(): Sequence<Node> =
-    (0 until length).asSequence().map { item(it) }
-
-private fun selectEpisodes(episodes: List<Episode>, tempo: Int): List<String> {
-    val shuffledEpisodes = episodes.shuffled()
+private fun Sequence<Episode>.selectEpisodes(tempo: Int): Sequence<String> {
     var totalTime = 0
 
-    val selectedEpisodes = shuffledEpisodes.takeWhile { episode ->
+    return shuffled().takeWhile { episode ->
         val newTotalTime = totalTime + episode.duration
         if (newTotalTime <= tempo * 60) {
             totalTime = newTotalTime
@@ -65,9 +53,20 @@ private fun selectEpisodes(episodes: List<Episode>, tempo: Int): List<String> {
         } else {
             false
         }
-    }
-
-    return selectedEpisodes.map { it.title }
+    }.map { it.title }
 }
+
+private fun fetchFeed(feedUrl: String): String {
+    val client = HttpClient.newHttpClient()
+    val request = HttpRequest.newBuilder()
+        .uri(URI.create(feedUrl))
+        .build()
+    val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+    return response.body()
+}
+
+// Extension function to convert NodeList to Sequence
+private fun NodeList.asSequence(): Sequence<Node> =
+    (0 until length).asSequence().map { item(it) }
 
 data class Episode(val title: String, val duration: Int)
