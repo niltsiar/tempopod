@@ -68,7 +68,7 @@ private fun parseEpisodes(xmlContent: String): Sequence<Episode> {
 private fun Sequence<Episode>.selectEpisodes(tempo: Int): Sequence<String> {
     var totalTime = 0
 
-    return shuffled().takeWhile { episode ->
+    return this.shuffled().filter { episode ->
         val newTotalTime = totalTime + episode.duration
         if (newTotalTime <= tempo * 60) {
             totalTime = newTotalTime
